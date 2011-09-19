@@ -146,15 +146,35 @@ module Hydra #:nodoc:
 
     # run all the Specs in an RSpec file (NOT IMPLEMENTED)
     def run_rspec_file(file)
-      # pull in rspec
+      load_error = nil
+
       begin
-        require 'rspec'
-        require 'hydra/spec/hydra_formatter'
-        # Ensure we override rspec's at_exit
-        RSpec::Core::Runner.disable_autorun!
+        require "rspec"
+      rescue LoadError => load_error
+        begin
+          require "spec"
+        rescue LoadError => load_error
+        end
+      end
+      
+      if defined?(RSpec)
+        run_rspec2_file(file)
+      elsif defined?(Spec)
+        run_rspec1_file(file)
+      else
+        return load_error
+      else
+    end
+    
+    def run_rspec2_file(file)
+      begin
+        require 'hydra/spec/rspec2/hydra_formatter'
       rescue LoadError => ex
         return ex.to_s
       end
+
+      # Ensure we override rspec's at_exit
+      RSpec::Core::Runner.disable_autorun!
       hydra_output = StringIO.new
 
       config = [
@@ -165,6 +185,38 @@ module Hydra #:nodoc:
       RSpec.instance_variable_set(:@world, nil)
       RSpec::Core::Runner.run(config, hydra_output, hydra_output)
 
+      hydra_output.rewind
+      output = hydra_output.read.chomp
+      output = "" if output.gsub("\n","") =~ /^\.*$/
+
+      return output
+    end
+
+    def run_rspec1_file(file)
+      begin
+        require 'hydra/spec/rspec1/hydra_formatter'
+        # Ensure we override rspec's at_exit
+        require 'hydra/spec/rspec1/autorun_override'
+      rescue LoadError => ex
+        return ex.to_s
+      end
+      hydra_output = StringIO.new
+      Spec::Runner.options.instance_variable_set(:@formatters, [
+        Spec::Runner::Formatter::HydraFormatter.new(
+          Spec::Runner.options.formatter_options,
+          hydra_output
+        )
+      ])
+      Spec::Runner.options.instance_variable_set(
+        :@example_groups, []
+      )
+      Spec::Runner.options.instance_variable_set(
+        :@files, [file]
+      )
+      Spec::Runner.options.instance_variable_set(
+        :@files_loaded, false
+      )
+      Spec::Runner.options.run_examples
       hydra_output.rewind
       output = hydra_output.read.chomp
       output = "" if output.gsub("\n","") =~ /^\.*$/
