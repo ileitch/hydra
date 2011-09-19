@@ -169,12 +169,11 @@ module Hydra #:nodoc:
     def run_rspec2_file(file)
       begin
         require 'hydra/spec/rspec2/hydra_formatter'
+        require 'hydra/spec/rspec2/autorun_override'
       rescue LoadError => ex
         return ex.to_s
       end
 
-      # Ensure we override rspec's at_exit
-      RSpec::Core::Runner.disable_autorun!
       hydra_output = StringIO.new
 
       config = [
@@ -195,7 +194,6 @@ module Hydra #:nodoc:
     def run_rspec1_file(file)
       begin
         require 'hydra/spec/rspec1/hydra_formatter'
-        # Ensure we override rspec's at_exit
         require 'hydra/spec/rspec1/autorun_override'
       rescue LoadError => ex
         return ex.to_s
