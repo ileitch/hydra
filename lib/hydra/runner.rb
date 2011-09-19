@@ -163,7 +163,7 @@ module Hydra #:nodoc:
         run_rspec1_file(file)
       else
         return load_error
-      else
+      end
     end
     
     def run_rspec2_file(file)
